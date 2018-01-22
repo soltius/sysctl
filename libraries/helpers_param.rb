@@ -9,10 +9,8 @@ module SysctlCookbook
         case node['platform_family']
         when 'freebsd'
           false
-        when 'arch', 'debian', 'rhel', 'fedora', 'amazon'
+        when 'arch', 'debian', 'rhel', 'fedora', 'amazon', 'sles', 'centos', 'suse'
           true
-        when 'suse'
-          node['platform_version'].to_f < 12.0 ? false : true
         end
       end
 
@@ -26,8 +24,8 @@ module SysctlCookbook
         case node['platform_family']
         when 'freebsd'
           '/etc/sysctl.conf.local'
-        when 'suse'
-          '/etc/sysctl.conf' if node['platform_version'].to_f < 12.0
+        when 'amazon', 'centos', 'rhel', 'sles', 'debian', 'suse'
+          '/etc/sysctl.conf'
         else
           raise 'Unknown sysctl file location. Unsupported platform.'
         end
@@ -59,6 +57,12 @@ module SysctlCookbook
 
       def set_sysctl_param(key, value)
         o = shell_out("sysctl #{'-e ' if node['sysctl']['ignore_error']}-w \"#{key}=#{value}\"")
+        return false if o.error!
+        true
+      end
+
+      def refresh_sysctl_param
+        o = shell_out("sysctl --system")
         return false if o.error!
         true
       end
@@ -97,7 +101,7 @@ module SysctlCookbook
         when 'arch', 'exherbo'
           s['name'] = 'systemd-sysctl'
           s['provider'] = Chef::Provider::Service::Systemd
-        when 'centos', 'redhat', 'scientific', 'oracle'
+        when 'centos', 'redhat', 'scientific', 'oracle', 'amazon'
           if node['platform_version'].to_f >= 7.0
             s['name'] = 'systemd-sysctl'
             s['provider'] = Chef::Provider::Service::Systemd
