@@ -39,6 +39,13 @@ module SysctlCookbook
         end
       end
 
+      def combine_sysctl_file_no_symlink
+        execute 'combine sysctl files' do
+          command "cat #{confd_sysctl}/*.conf > #{config_sysctl}"
+          action :run
+        end unless sysctld?
+      end
+
       def create_sysctld(key, value)
         directory confd_sysctl
 
@@ -49,14 +56,19 @@ module SysctlCookbook
             k: key,
             v: value
           )
-          notifies :run, 'execute[combine sysctl files]', :immediately unless sysctld?
           notifies :start, 'service[procps]', :immediately if restart_procps?
         end
 
-        execute 'combine sysctl files' do
-          command "cat #{confd_sysctl}/*.conf > #{config_sysctl}"
-          action :nothing
-        end unless sysctld?
+        case node['platform']
+        when 'redhat', 'rhel'
+          if node['platform_version'].to_f < 7
+            combine_sysctl_file_no_symlink
+          end
+        when 'suse', 'sles'
+          if node['platform_version'].to_f < 12
+            combine_sysctl_file_no_symlink
+          end
+        end
       end
     end
 
@@ -70,12 +82,14 @@ module SysctlCookbook
     end
 
     action :remove do
+      file "#{confd_sysctl}/99-chef-#{key}.conf" do
+        action :delete
+      end
       converge_by "reverting #{new_resource.key}" do
-        v = node['sysctl']['backup'][new_resource.key]
-        r = create_sysctld
-        r.action(:delete)
+        v = get_sysctl_value(new_resource.key)
         set_sysctl_param(new_resource.key, v)
-        node.rm['sysctl']['backup'][new_resource.key]
+        # node.rm['sysctl']['backup'][new_resource.key]
+        refresh_sysctl_param
       end
     end
   end
