@@ -62,7 +62,7 @@ module SysctlCookbook
       end
 
       def refresh_sysctl_param
-        o = shell_out("sysctl --system")
+        o = shell_out('sysctl --system')
         return false if o.error!
         true
       end
