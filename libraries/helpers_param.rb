@@ -9,7 +9,7 @@ module SysctlCookbook
         case node['platform_family']
         when 'freebsd'
           false
-        when 'arch', 'debian', 'rhel', 'fedora', 'amazon', 'sles', 'centos', 'suse'
+        when 'arch', 'debian', 'rhel', 'fedora', 'amazon', 'sles', 'centos', 'suse' # ~FC024
           true
         end
       end
@@ -24,7 +24,7 @@ module SysctlCookbook
         case node['platform_family']
         when 'freebsd'
           '/etc/sysctl.conf.local'
-        when 'amazon', 'centos', 'rhel', 'sles', 'debian', 'suse'
+        when 'amazon', 'centos', 'rhel', 'sles', 'debian', 'suse' # ~FC024
           '/etc/sysctl.conf'
         else
           raise 'Unknown sysctl file location. Unsupported platform.'
