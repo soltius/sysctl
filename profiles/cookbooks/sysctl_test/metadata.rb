@@ -1,0 +1,7 @@
+name 'sysctl_test'
+maintainer 'Soltius NZ Limited.'
+maintainer_email 'andrei.nakagawa@soltius.co.nz'
+license 'Apache-2.0'
+description 'Wrapper cookbook to test sysctl resources'
+version '0.1.0'
+depends 'sysctl'
