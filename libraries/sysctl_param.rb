@@ -41,13 +41,6 @@ module SysctlCookbook
         end
       end
 
-      def combine_sysctl_file_no_symlink
-        execute 'combine sysctl files' do
-          command "cat #{confd_sysctl}/*.conf > #{config_sysctl}"
-          action :run
-        end unless sysctld?
-      end
-
       # - Deprecated method to add new attributes to sysctl
       # - Using concat_sysctl_files method to be read by sysctl.
 
@@ -94,9 +87,7 @@ module SysctlCookbook
             ::File.readlines(item).each do |line|
               # -- removes whitespaces and persists the change in "line"
               line.gsub!(/\s+/, "")
-              
               return unless merged.grep(/#{Regexp.escape(line)}/)
-
               merged << line unless line[0] == '#' || line.nil? || line.empty?
             end
             if path =~ /etc/
@@ -122,16 +113,6 @@ module SysctlCookbook
           echo "#{key}=#{value}" >> #{SYSCTL_MERGED_FILE}
           EOS
           not_if "grep -q #{key}=#{value} #{SYSCTL_MERGED_FILE}"
-        end
-      end
-
-      def remove_paramater_from_sysctl(key)
-        bash 'remove_line' do
-          user 'root'
-          code <<-EOS
-          sed -i.backup "/#{key}/d" #{SYSCTL_MERGED_FILE}
-          EOS
-          only_if "grep -q #{key} #{SYSCTL_MERGED_FILE}"
         end
       end
 
@@ -163,14 +144,6 @@ module SysctlCookbook
         node.default['sysctl']['backup'][new_resource.key] ||= get_sysctl_value(new_resource.key)
         create_init
         set_sysctl_param(new_resource.key, new_resource.value)
-      end
-    end
-
-    action :remove do
-      converge_by "reverting #{new_resource.key}" do
-        concat_sysctl_files
-        remove_paramater_from_sysctl(new_resource.key)
-        refresh_sysctl_param
       end
     end
 
