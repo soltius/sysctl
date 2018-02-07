@@ -59,24 +59,6 @@ platforms:
         name: suse-sles-12-sp2-*-hvm-ssd-x86_64
       tags:
         Name: "TestKitchen:chef-base:suse-12.2"
-  - name: windows-2016
-    driver:
-      image_search:
-        name: Windows_Server-2016-English-Full-Base-*
-      tags:
-        Name: "TestKitchen:chef-base:windows-2016"
-    transport:
-      name: winrm
-      username: Administrator
-  - name: windows-2012-r2
-    driver:
-      image_search:
-        name: Windows_Server-2012-R2_RTM-English-64Bit-Base-*
-      tags:
-        Name: "TestKitchen:chef-base:windows-2012-R2"
-    transport:
-      name: winrm
-      username: Administrator
   - name: ubuntu-16.04
     driver:
       image_search:
