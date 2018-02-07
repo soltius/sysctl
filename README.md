@@ -65,8 +65,7 @@ This also requires that your run_list include the `sysctl::default` recipe in or
 #### Actions
 
 - `:apply` (default)
-- `:remove`
-- `:nothing`
+- `:restore`
 
 #### Properties
 
@@ -85,14 +84,15 @@ Set vm.swappiness to 20 via sysctl_param resource
     end
 ```
 
-Remove sysctl parameter and set net.ipv4.tcp_fin_timeout back to default
+Restore sysctl backup and set sysctl config files back to default
 
 ```ruby
-    sysctl_param 'net.ipv4.tcp_fin_timeout' do
-      value 30
-      action :remove
+    sysctl_param 'any name' do
+	  action :restore
     end
 ```
+Note: The restore function only restores a backup made from the initial ```:apply``` function. If  ```:apply``` hasn't been called the backup file will not exist.
+When you call the  ```:apply``` function, it will create .backup files in the folder "/etc/sysctl.d/"  from previous files named .conf which are called by the sysctl tool. Then, when you call the  ```:restore``` function is called it will restore all .backup files to its original names and deletes the "99-chef-merged" file.
 
 ### Ohai Plugin
 
