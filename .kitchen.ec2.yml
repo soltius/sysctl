@@ -31,22 +31,6 @@ platforms:
         name: amzn2-ami-hvm-2017.*-x86_64-*
       tags:
         Name: "TestKitchen:chef-base:amazon-2017"
-  - name: oracle-linux-nonUEK-7.4
-    driver:
-      image_id: ami-85678fe7
-      tags:
-        Name: TestKitchen:chef-base:oracle-linux-nonUEK7.4
-    transport:
-      name: ssh
-      username: ec2-user
-  - name: oracle-linux-UEK-7.4
-    driver:
-      image_id: ami-1f7b937d
-      tags:
-        Name: TestKitchen:chef-base:oracle-linux-UEK7.4
-    transport:
-      name: ssh
-      username: ec2-user
   - name: redhat-7.4
     driver:
       image_search:
