@@ -1,0 +1,108 @@
+---
+driver:
+  name: ec2
+  shared_credentials_profile: sandbox
+  security_group_ids: ['sg-99999999']
+  aws_ssh_key_id: your_aws_key
+  region: us-west-2
+  instance_type: t2.small
+
+transport:
+  ssh_key: your_aws_key
+  username: ec2-user
+
+provisioner:
+  name: chef_zero
+
+verifier:
+  name: inspec
+  sudo: true
+
+platforms:
+  - name: amazon-2017
+    driver:
+      image_search:
+        name: amzn-ami-hvm-2017.*-x86_64-*
+      tags:
+        Name: "TestKitchen:chef-base:amazon-2017"
+  - name: amazon2-2017
+    driver:
+      image_search:
+        name: amzn2-ami-hvm-2017.*-x86_64-*
+      tags:
+        Name: "TestKitchen:chef-base:amazon-2017"
+  - name: oracle-linux-nonUEK-7.4
+    driver:
+      image_id: ami-85678fe7
+      tags:
+        Name: TestKitchen:chef-base:oracle-linux-nonUEK7.4
+    transport:
+      name: ssh
+      username: ec2-user
+  - name: oracle-linux-UEK-7.4
+    driver:
+      image_id: ami-1f7b937d
+      tags:
+        Name: TestKitchen:chef-base:oracle-linux-UEK7.4
+    transport:
+      name: ssh
+      username: ec2-user
+  - name: redhat-7.4
+    driver:
+      image_search:
+        name: RHEL-7.4_HVM_GA-*-x86_64-2-*
+      tags:
+        Name: "TestKitchen:chef-base:redhat-7.4"
+  - name: suse-12.2
+    driver:
+      image_search:
+        name: suse-sles-12-sp2-*-hvm-ssd-x86_64
+      tags:
+        Name: "TestKitchen:chef-base:suse-12.2"
+  - name: windows-2016
+    driver:
+      image_search:
+        name: Windows_Server-2016-English-Full-Base-*
+      tags:
+        Name: "TestKitchen:chef-base:windows-2016"
+    transport:
+      name: winrm
+      username: Administrator
+  - name: windows-2012-r2
+    driver:
+      image_search:
+        name: Windows_Server-2012-R2_RTM-English-64Bit-Base-*
+      tags:
+        Name: "TestKitchen:chef-base:windows-2012-R2"
+    transport:
+      name: winrm
+      username: Administrator
+  - name: ubuntu-16.04
+    driver:
+      image_search:
+        name: ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*
+      tags:
+        Name: "TestKitchen:chef-base:ubuntu-16.04"
+    transport:
+      name: ssh
+      username: ubuntu
+
+suites:
+- name: apply
+  verifier:
+    inspec_tests:
+      - path: profiles/sysctl/controls/apply
+  run_list:
+    - recipe[sysctl_test::apply]
+- name: remove
+  run_list:
+    - recipe[sysctl_test::remove]
+  verifier:
+    inspec_tests:
+      - path: profiles/sysctl/controls/remove
+- name: restore
+  run_list:
+    - recipe[sysctl_test::restore]
+  verifier:
+    inspec_tests:
+      - path: profiles/sysctl/controls/restore
