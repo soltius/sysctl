@@ -106,6 +106,15 @@ module SysctlCookbook
       end
 
       def add_parameter_to_sysctl(key, value)
+        bash "remove_line" do
+          user "root"
+          code <<-EOS
+          sed -i.backup "/#{key}/d" #{SYSCTL_MERGED_FILE}
+          EOS
+          only_if "grep -q #{key} #{SYSCTL_MERGED_FILE}"
+          not_if "grep -q #{key}=#{value} #{SYSCTL_MERGED_FILE}"
+        end
+
         bash 'insert_line' do
           user 'root'
           code <<-EOS
