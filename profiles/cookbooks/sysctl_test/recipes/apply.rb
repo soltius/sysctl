@@ -19,6 +19,6 @@
 #
 
 sysctl_param 'vm.swappiness' do
-  value 19
+  value 40
   action :apply
 end

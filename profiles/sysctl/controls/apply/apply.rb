@@ -7,12 +7,12 @@ control 'configure Sysctl' do
 
   describe command('sysctl -n vm.swappiness') do
     its(:exit_status) { should eq 0 }
-    its(:stdout) { should match(/^19$/) }
+    its(:stdout) { should match(/^40$/) }
   end
 
   describe file('/etc/sysctl.d/99-chef-merged-sysctl.conf') do
     it { should exist }
     it { should be_file }
-    its(:content) { should match /^vm.swappiness=19$/ }
+    its(:content) { should match /^vm.swappiness=40$/ }
   end
 end
