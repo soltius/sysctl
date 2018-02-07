@@ -86,16 +86,17 @@ module SysctlCookbook
         paths  = ['/etc/sysctl.d/*.conf', '/run/sysctl.d/*.conf', '/usr/lib/sysctl.d/*.conf']
         merged = []
 
-        return unless ::File.exist?(SYSCTL_MERGED_FILE)
+        return if ::File.exist?(SYSCTL_MERGED_FILE)
 
         paths.each do |path|
           Dir.glob(path) do |item|
             merged << "\n# Parameters from #{item}"
             ::File.readlines(item).each do |line|
               # -- removes whitespaces and persists the change in "line"
-              line.gsub!(/\s+/, '')
+              line.gsub!(/\s+/, "")
+              
+              return unless merged.grep(/#{Regexp.escape(line)}/)
 
-              next if merged.grep(/#{Regexp.escape(line)}/)
               merged << line unless line[0] == '#' || line.nil? || line.empty?
             end
             if path =~ /etc/
