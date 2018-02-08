@@ -1,0 +1,8 @@
+name: sysctl
+title: Sysctl InSpec Profile
+maintainer: Soltius
+copyright: Soltius
+copyright_email: andrei.nakagawa@soltius.co.nz
+license: Apache-2.0
+summary: An InSpec Compliance Profile for Sysctl
+version: 0.1.0

@@ -1,98 +1,64 @@
-# sysctl cookbook
+# sysctl
 
-[![Cookbook Version](https://img.shields.io/cookbook/v/sysctl.svg?style=flat)](https://supermarket.chef.io/cookbooks/sysctl) [![Build Status](https://travis-ci.org/sous-chefs/sysctl.svg?branch=master)](https://travis-ci.org/sous-chefs/sysctl) [![License](https://img.shields.io/badge/license-Apache_2-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+This cookbook provides recipes for changing Sysctl attributes.
 
-Set [sysctl](http://en.wikipedia.org/wiki/Sysctl) system control parameters via Chef
+## Compatibility Matrix
 
-## Requirements
+| Recipe Name | amazon-2017.03 | redhat-7.4 | suse-12.2 | suse-12.3 | ubuntu-16.04 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `sysctl::apply` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `sysctl::restore` | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-### Platforms
+## Attributes overview
 
-- Amazon Linux (Integration tested)
-- Debian/Ubuntu (Integration tested)
-- RHEL/CentOS (Integration tested)
-- openSUSE (Integration tested)
-- PLD Linux
-- Exherbo
-- Arch Linux
-- SLES
-- FreeBSD
+| Name | Type | Default | Required |
+| --- | --- | --- | --- |
+| `['sysctl']['restart_procps']` | boolean | true | No |
+| `['sysctl']['ignore_error']` | boolean | false | No |
 
-### Chef
 
-- 12.5+
+## Resources
 
-## Usage
-
-There are two main ways to interact with the cookbook. This is via chef [attributes](http://docs.chef.io/attributes.html) or via the resource.
-
-### Cookbook Attributes
-
-- `node['sysctl']['params']` - A namespace for setting sysctl parameters.
-- `node['sysctl']['conf_dir']` - Specifies the sysctl.d directory to be used. Defaults to `/etc/sysctl.d` on the Debian and RHEL platform families, otherwise `nil`
-- `node['sysctl']['allow_sysctl_conf']` - Defaults to false. Using `conf_dir` is highly recommended. On some platforms that is not supported. For those platforms, set this to `true` and the cookbook will rewrite the `/etc/sysctl.conf` file directly with the params provided. Be sure to save any local edits of `/etc/sysctl.conf` before enabling this to avoid losing them.
-- `node['sysctl']['restart_procps']` - Defaults to true. Will allow the consumer of the cookbook to control whether or not to notify procps to restart sysctl to load the newly set values.
-- `node['sysctl']['ignore_error']` - Defaults is not set. If true, this will allow the consumer of the cookbook to control whether or not to utilize '-e' flag within actual sysctl command.
-
-Note: if `node['sysctl']['conf_dir']` is set to nil and `node['sysctl']['allow_sysctl_conf']` is not set, no config will be written
-
-### Setting Sysctl Parameters
-
-#### Using Attributes
-
-Setting variables in the `node['sysctl']['params']` hash will allow you to easily set common kernel parameters across a lot of nodes. All you need to do to have them loaded is to include `sysctl::apply` anywhere in your run list of the node. It is recommended to do this early in the run list, so any recipe that gets applied afterwards that may depend on the set parameters will find them to be set.
-
-The attributes method is easiest to implement if you manage the kernel parameters at the system level opposed to a per cookbook level approach. The configuration will be written out when `sysctl::apply` gets run, which allows the parameters set to be persisted during a reboot.
-
-#### Examples
-
-Set `vm.swappiness` to 20 via attributes
-
-```ruby
-    node.default['sysctl']['params']['vm']['swappiness'] = 20
-
-    include_recipe 'sysctl::apply'
-```
-
-### Using resources
+### sysctl_param
 
 The `sysctl_param` resource can be called from wrapper or application cookbooks to immediately set the kernel parameter and cue the kernel parameter to be written out to the configuration file.
 
 This also requires that your run_list include the `sysctl::default` recipe in order to persist the settings.
 
-### sysctl_param
-
 #### Actions
 
 - `:apply` (default)
-- `:remove`
-- `:nothing`
-
-#### Properties
-
-- key
-- value
+- `:restore`
 
 #### Examples
 
-Set vm.swappiness to 20 via sysctl_param resource
+**`:apply`**
+**Description:** Set vm.swappiness to 20 via sysctl_param resource.  [source code](libraries/sysctl_param.rb)
 
 ```ruby
-    include_recipe 'sysctl::default'
-
     sysctl_param 'vm.swappiness' do
       value 20
+	  action :apply
+    end
+```
+**Description:** Update vm.swappiness from 20 to 30 via sysctl_param resource. [source code](libraries/sysctl_param.rb)
+```ruby
+    sysctl_param 'vm.swappiness' do
+      value 30
+	  action :apply
     end
 ```
 
-Remove sysctl parameter and set net.ipv4.tcp_fin_timeout back to default
+ **`:restore`**
+**Description:** Restore sysctl backup and set sysctl config files back to default. [source code](libraries/sysctl_param.rb)
 
 ```ruby
-    sysctl_param 'net.ipv4.tcp_fin_timeout' do
-      value 30
-      action :remove
+    sysctl_param 'any name' do
+	  action :restore
     end
 ```
+Note: The restore function only restores a backup made from the initial ```:apply``` function. If  ```:apply``` hasn't been called the backup file will not exist.
+When you call the  ```:apply``` function, it will create .backup files in the folder "/etc/sysctl.d/"  from previous files named .conf which are called by the sysctl tool. Then, when you call the  ```:restore``` function is called it will restore all .backup files to its original names and deletes the "99-chef-merged" file.
 
 ### Ohai Plugin
 
@@ -127,7 +93,8 @@ The following commands will run the tests:
 chef exec bundle install
 chef exec cookstyle
 chef exec foodcritic .
-chef exec rspec
+chef exec kitchen verify
+  OR
 chef exec kitchen test
 ```
 

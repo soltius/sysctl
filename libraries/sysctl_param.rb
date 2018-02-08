@@ -8,6 +8,8 @@ module SysctlCookbook
     property :key, String, name_property: true
     property :value, [Array, String, Integer], coerce: proc { |v| coerce_value(v) }, required: true
 
+    SYSCTL_MERGED_FILE = '/etc/sysctl.d/99-chef-merged-sysctl.conf'.freeze
+
     load_current_value do
       begin
         value get_sysctl_value(key)
@@ -39,43 +41,125 @@ module SysctlCookbook
         end
       end
 
-      def create_sysctld(key, value)
-        directory confd_sysctl
+      # - Deprecated method to add new attributes to sysctl
+      # - Using concat_sysctl_files method to be read by sysctl.
 
-        template "#{confd_sysctl}/99-chef-#{key}.conf" do
+      # def create_sysctld(key, value)
+      #   directory confd_sysctl
+      #
+      #   template "#{confd_sysctl}/99-chef-#{key}.conf" do
+      #     cookbook 'sysctl'
+      #     source 'sysctl.conf.erb'
+      #     variables(
+      #       k: key,
+      #       v: value
+      #     )
+      #     notifies :start, 'service[procps]', :immediately if restart_procps?
+      #   end
+      #
+      #   case node['platform']
+      #   when 'redhat', 'rhel'
+      #     if node['platform_version'].to_f < 7
+      #       combine_sysctl_file_no_symlink
+      #     end
+      #   when 'suse', 'sles'
+      #     if node['platform_version'].to_f < 12
+      #       combine_sysctl_file_no_symlink
+      #     end
+      #   end
+      # end
+
+      def backup_sysctl_files(item)
+        backup = "#{item}.backup"
+        contents = ::File.readlines(item)
+        ::File.open(backup, 'w') { |f| f.write(contents.join('')) }
+      end
+
+      def concat_sysctl_files
+        paths  = ['/etc/sysctl.d/*.conf', '/run/sysctl.d/*.conf', '/usr/lib/sysctl.d/*.conf']
+        merged = []
+
+        return if ::File.exist?(SYSCTL_MERGED_FILE)
+
+        paths.each do |path|
+          Dir.glob(path) do |item|
+            merged << "\n# Parameters from #{item}"
+            ::File.readlines(item).each do |line|
+              # -- removes whitespaces and persists the change in "line"
+              line.gsub!(/\s+/, "")
+              return unless merged.grep(/#{Regexp.escape(line)}/)
+              merged << line unless line[0] == '#' || line.nil? || line.empty?
+            end
+            if path =~ /etc/
+              backup_sysctl_files(item)
+              ::FileUtils.rm(item)
+            end
+          end
+        end
+        template SYSCTL_MERGED_FILE do
           cookbook 'sysctl'
-          source 'sysctl.conf.erb'
+          source '99-chef-merged-sysctl.erb'
           variables(
-            k: key,
-            v: value
+            values: merged
           )
-          notifies :run, 'execute[combine sysctl files]', :immediately unless sysctld?
-          notifies :start, 'service[procps]', :immediately if restart_procps?
+        end
+      end
+
+      def add_parameter_to_sysctl(key, value)
+        bash "remove_line" do
+          user "root"
+          code <<-EOS
+          sed -i.backup "/#{key}/d" #{SYSCTL_MERGED_FILE}
+          EOS
+          only_if "grep -q #{key} #{SYSCTL_MERGED_FILE}"
+          not_if "grep -q #{key}=#{value} #{SYSCTL_MERGED_FILE}"
         end
 
-        execute 'combine sysctl files' do
-          command "cat #{confd_sysctl}/*.conf > #{config_sysctl}"
-          action :nothing
-        end unless sysctld?
+        bash 'insert_line' do
+          user 'root'
+          code <<-EOS
+          echo "\n# CHEF MANAGED SYSCTL ATTRIBUTE (#{key})" >> #{SYSCTL_MERGED_FILE}
+          echo "#{key}=#{value}" >> #{SYSCTL_MERGED_FILE}
+          EOS
+          not_if "grep -q #{key}=#{value} #{SYSCTL_MERGED_FILE}"
+        end
+      end
+
+      def restore_sysctl_backup
+        path = '/etc/sysctl.d/*.backup'
+
+        Dir.glob(path) do |item|
+          item.gsub!(/\.backup/, '')
+
+          bash 'restore_file' do
+            user 'root'
+            code <<-EOS
+            mv #{item}.backup #{item}
+            EOS
+            only_if { ::File.exist?(SYSCTL_MERGED_FILE) }
+          end
+        end
+        file SYSCTL_MERGED_FILE do
+          action :delete
+          only_if { ::File.exist?(SYSCTL_MERGED_FILE) }
+        end
       end
     end
 
     action :apply do
       converge_if_changed do
+        concat_sysctl_files
+        add_parameter_to_sysctl(new_resource.key, new_resource.value)
         node.default['sysctl']['backup'][new_resource.key] ||= get_sysctl_value(new_resource.key)
         create_init
-        create_sysctld(new_resource.key, new_resource.value)
         set_sysctl_param(new_resource.key, new_resource.value)
       end
     end
 
-    action :remove do
-      converge_by "reverting #{new_resource.key}" do
-        v = node['sysctl']['backup'][new_resource.key]
-        r = create_sysctld
-        r.action(:delete)
-        set_sysctl_param(new_resource.key, v)
-        node.rm['sysctl']['backup'][new_resource.key]
+    action :restore do
+      converge_by 'restoring backup from /etc/sysctl.d/*.backup' do
+        restore_sysctl_backup
+        refresh_sysctl_param
       end
     end
   end
